@@ -10,7 +10,7 @@ export class UsersService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-  ) { }
+  ) {}
 
   async onModuleInit(): Promise<void> {
     await this.seedDefaultUser();
