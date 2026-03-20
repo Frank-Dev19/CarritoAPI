@@ -5,6 +5,8 @@ export class ApiProductResponse {
   price: number;
   discountPercentage: number;
   thumbnail: string;
+  stock: number;
+  sku: string;
 }
 
 export class ApiProductsResponse {

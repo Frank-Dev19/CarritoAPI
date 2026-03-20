@@ -5,6 +5,7 @@ import {
   ApiProductsResponse,
   ApiProductResponse,
   ProductResponseDto,
+  ProductsPaginatedResponse,
 } from './dto';
 import { MathUtils } from '../common/utils/math.utils';
 import { EXTERNAL_API } from '../common/constants';
@@ -16,26 +17,35 @@ export class ProductsService {
     private readonly configService: ConfigService,
   ) {}
 
-  async findAll(): Promise<ProductResponseDto[]> {
+  async findAll(
+    page: number = 1,
+    limit: number = 15,
+  ): Promise<ProductsPaginatedResponse> {
     const baseUrl = this.configService.get<string>(
       'app.externalApiUrl',
       EXTERNAL_API.BASE_URL,
     );
-    const url = `${baseUrl}${EXTERNAL_API.PRODUCTS_ENDPOINT}`;
+    const skip = (page - 1) * limit;
+    const url = `${baseUrl}${EXTERNAL_API.PRODUCTS_ENDPOINT}?skip=${skip}&limit=${limit}`;
 
     const response = await this.httpService
       .get<ApiProductsResponse>(url)
       .toPromise();
 
     if (!response) {
-      return [];
+      return { products: [], total: 0, skip: 0, limit };
     }
 
-    const products = response.data.products;
-
-    return products.map((product: ApiProductResponse) =>
+    const products = response.data.products.map((product: ApiProductResponse) =>
       this.transformProduct(product),
     );
+
+    return {
+      products,
+      total: response.data.total,
+      skip: response.data.skip,
+      limit,
+    };
   }
 
   private transformProduct(product: ApiProductResponse): ProductResponseDto {
@@ -52,6 +62,43 @@ export class ProductsService {
       discountPercentage: product.discountPercentage,
       totalPrice,
       thumbnail: product.thumbnail,
+      sku: product.sku,
     };
+  }
+
+  async getProductStock(productId: number): Promise<number> {
+    const baseUrl = this.configService.get<string>(
+      'app.externalApiUrl',
+      EXTERNAL_API.BASE_URL,
+    );
+    const url = `${baseUrl}${EXTERNAL_API.PRODUCTS_ENDPOINT}/${productId}`;
+
+    const response = await this.httpService
+      .get<ApiProductResponse>(url)
+      .toPromise();
+
+    if (!response || !response.data) {
+      return 0;
+    }
+
+    return response.data.stock ?? 0;
+  }
+
+  async getProductById(productId: number): Promise<ApiProductResponse | null> {
+    const baseUrl = this.configService.get<string>(
+      'app.externalApiUrl',
+      EXTERNAL_API.BASE_URL,
+    );
+    const url = `${baseUrl}${EXTERNAL_API.PRODUCTS_ENDPOINT}/${productId}`;
+
+    const response = await this.httpService
+      .get<ApiProductResponse>(url)
+      .toPromise();
+
+    if (!response || !response.data) {
+      return null;
+    }
+
+    return response.data;
   }
 }
